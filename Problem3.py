@@ -1,17 +1,12 @@
-from time import time
-
-import numpy as np
-import scipy.io as sio
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.io as sio
+from sklearn import svm
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import KFold
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import confusion_matrix
-from sklearn import preprocessing
-from sklearn import svm
 
 data = sio.loadmat('TwoSpirals.mat')
 print(sio.whosmat('TwoSpirals.mat'))
