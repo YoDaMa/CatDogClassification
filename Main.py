@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
-SIZE = 244
-TRI_DIR = Path('annotations/trimaps')
-IMG_DIR = Path('images')
+SIZE = 3100
+TRI_DIR = Path('../CatDogDataSet/annotations/trimaps')
+IMG_DIR = Path('../CatDogDataSet/images')
 BASE_DIR = Path('.')
 # get all the names of the trimaps images.
 
@@ -65,8 +65,26 @@ def norm_image(img):
 
 
 def resize_image(img, size):
-    return img
+    """
+    Resize PIL Image
+    Resizes the image to be square with sidelength size. Pads with black.
+    """
+    n_x, n_y = img.size
+    if n_y > n_x:
+        n_y_new = size
+        n_x_new = round(size* n_x / n_y)
+    else:
+        n_x_new = size
+        n_y_new = round(size * n_y / n_x)
 
+    img_res = img.resize((n_x_new, n_y_new), resample=PIL.Image.ANTIALIAS)
+
+    # Pad the borders to create a square image
+    img_pad = Image.new('RGB', (size,size), (128,128,128))
+    ulc = ((size- n_x_new) // 2, (size - n_y_new) // 2)
+    img_pad.paste(img_res, ulc)
+
+    return img_pad
 
 def prep_images(paths, out_dir):
     """
@@ -90,6 +108,17 @@ def prep_images(paths, out_dir):
             print("Weird extension: {}".format(path))
 
 
+# def readlist():
+#     """
+#     This method should be used to read the list.txt file in the annotations
+#     directory.
+#     :return: nothing.
+#     """
+#     pathToList = Path('../CatDogDataSet/annotations/list.txt')
+#     f = open(str(pathToList),'r')
+#     for i in f.readlines():
+#         print(i)
+#
 
 def main():
     """Main program for running from command line"""
@@ -101,11 +130,11 @@ def main():
 
 
     # Make the output directories
-    base_out = Path(BASE_DIR, 'data{}'.format(SIZE))
+    base_out = Path(BASE_DIR, 'data1{}'.format(SIZE))
     train_dir_out = Path(base_out, 'train')
-    test_dir_out = Path(base_out, 'test')
+    # test_dir_out = Path(base_out, 'test')
     os.makedirs(str(train_dir_out), exist_ok=True)
-    os.makedirs(str(test_dir_out), exist_ok=True)
+    # os.makedirs(str(test_dir_out), exist_ok=True)
 
     procs = dict()
     procs[1] = Process(target=prep_images, args=(train_img,
