@@ -24,3 +24,5 @@ else:
     train_data = np.fromfile('train_data.txt')
     label_data = np.fromfile('label_data.txt')
 
+print("HELLO")
+
