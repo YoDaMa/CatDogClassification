@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 
-SIZE = 32
+SIZE = 64
 CHANNELS = 3
 TRI_DIR = Path('../CatDogDataSet/annotations/trimaps')
 IMG_DIR = Path('../CatDogDataSet/images')
@@ -76,26 +76,21 @@ def resize_image(img, size, imtype='RGB'):
     Resizes the image to be square with sidelength size. Pads with black.
     """
     n_x, n_y = img.size
-    if n_y > n_x:
-        n_y_new = size
-        n_x_new = round(size * n_x / n_y)
-    else:
-        n_x_new = size
-        n_y_new = round(size * n_y / n_x)
+    # if n_y > n_x:
+    #     n_y_new = size
+    #     n_x_new = round(size * n_x / n_y)
+    # else:
+    #     n_x_new = size
+    #     n_y_new = round(size * n_y / n_x)
 
-    img_res = img.resize((n_x_new, n_y_new), resample=PIL.Image.ANTIALIAS)
+    img_res = img.resize((size, size), resample=PIL.Image.ANTIALIAS)
     # Pad the borders to create a square image
-    if imtype == 'RGB':
-        img_pad = Image.new(imtype, (size, size), (0, 0, 0))
-    else:
-        img_np = np.asarray(img).astype(float)
+    if imtype == 'L':
+        # print("IMType:", img_res.format)
+        img_np = np.asarray(img_res).astype(float)
         img_np = np.abs(img_np - 2)
-        img_res = Image.fromarray(img_np)
-        img_pad = Image.new(imtype, (size, size), 0)
-    ulc = ((size - n_x_new) // 2, (size - n_y_new) // 2)
-    img_pad.paste(img_res, ulc)
-
-    return img_pad
+        img_res = Image.fromarray(img_np).convert('L')
+    return img_res
 
 
 def prep_train_images(paths, out_dir):
@@ -105,7 +100,7 @@ def prep_train_images(paths, out_dir):
     :return: nothing
     """
     count = len(paths)
-    data = np.ndarray((count, CHANNELS, SIZE, SIZE), dtype=np.uint8)
+    data = np.ndarray((count, SIZE, SIZE, CHANNELS), dtype=np.uint8)
     for i, path in enumerate(paths):
         # print("Train:", i)
         if i % 100 == 0:
@@ -116,7 +111,6 @@ def prep_train_images(paths, out_dir):
             img_nrm = norm_image(img)
             img_res = resize_image(img_nrm, SIZE)
             img_mat = np.asarray(img_res, dtype=np.uint8)
-            img_mat = np.transpose(img_mat)
             data[i] = img_mat
             basename = os.path.basename(str(path))
             path_out = os.path.join(str(out_dir), str(basename))
@@ -124,6 +118,8 @@ def prep_train_images(paths, out_dir):
 
         else:
             print("Weird extension: {}".format(path))
+    data = data.reshape(count*(SIZE**2), CHANNELS)
+    print(data.shape)
     return data
 
 
@@ -135,7 +131,7 @@ def prep_label_images(paths, out_dir):
     :return: nothing
     """
     count = len(paths)
-    data = np.ndarray((count, 1, SIZE, SIZE), dtype=np.uint8)
+    data = np.ndarray((count, SIZE, SIZE), dtype=np.uint8)
     for i, path in enumerate(paths):
         # print("Train:", i)
         if i % 100 == 0:
@@ -145,14 +141,16 @@ def prep_label_images(paths, out_dir):
             img = Image.open(path)
             img_res = resize_image(img, SIZE, 'L')
             img_mat = np.asarray(img_res, dtype=np.uint8)
-            img_mat = np.transpose(img_mat)
             data[i] = img_mat
             basename = os.path.basename(str(path))
             path_out = os.path.join(str(out_dir), str(basename))
+            # print("Label Shape:", img_res.size, img_res.format, img_res.mode)
             img_res.save(path_out)
 
         else:
             print("Weird extension: {}".format(path))
+
+    data = data.ravel()
     return data
 
 
@@ -193,7 +191,7 @@ def main():
             else:
                 catList.append(iList)
 
-    randIndexes = np.random.choice(len(pictureList), len(pictureList) // 100)
+    randIndexes = np.random.choice(len(pictureList), len(pictureList) // 10)
     pictureList = [pictureList[i] for i in randIndexes]
     train_img = [Path(IMG_DIR, "{}.jpg".format(x)) for x in pictureList]
     label_img = [Path(TRI_DIR, "{}.png".format(x)) for x in pictureList]
