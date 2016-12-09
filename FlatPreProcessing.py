@@ -11,11 +11,13 @@ import os, re, cv2, random
 from scipy.misc import imread
 import matplotlib.pyplot as plt
 from pathlib import Path
+from sklearn.cluster import KMeans
+from skimage.feature import local_binary_pattern
 
 
 
-SIZE = 64
-CHANNELS = 3
+SIZE = 40
+CHANNELS = 30
 TRI_DIR = Path('../CatDogDataSet/annotations/trimaps')
 IMG_DIR = Path('../CatDogDataSet/images')
 BASE_DIR = Path('.')
@@ -89,8 +91,12 @@ def resize_image(img, size, imtype='RGB'):
         # print("IMType:", img_res.format)
         img_np = np.asarray(img_res).astype(float)
         img_np = np.abs(img_np - 2)
-        img_res = Image.fromarray(img_np).convert('L')
-    return img_res
+        img_pad = Image.fromarray(img_np).convert('L')
+
+    else:
+        img_pad = img.resize((size+4, size+4), resample=PIL.Image.ANTIALIAS)
+        img_pad.paste(img_res, (2,2))
+    return img_pad
 
 
 def prep_train_images(paths, out_dir):
@@ -110,16 +116,33 @@ def prep_train_images(paths, out_dir):
             img = Image.open(path)
             img_nrm = norm_image(img)
             img_res = resize_image(img_nrm, SIZE)
-            img_mat = np.asarray(img_res, dtype=np.uint8)
-            data[i] = img_mat
-            basename = os.path.basename(str(path))
-            path_out = os.path.join(str(out_dir), str(basename))
-            img_res.save(path_out)
+            im = img_res.load()
+            img_y, img_b, img_r = img_res.convert('YCbCr').split()
+            img_y_np = np.asarray(img_y).astype(float)
+            img_loc = np.ndarray((SIZE, SIZE, CHANNELS))
+            for j in range(2, SIZE-2):
+                for k in range(2, SIZE-2):
+                    edge = np.asarray([img_y_np[j-2:j+3, k-2:k+3]]).ravel()
+                    # print(edge)
+                    currdata = im[j, k]
+                    newdata = np.ndarray(CHANNELS)
+                    newdata[0:5] = [currdata[0], currdata[1], currdata[2], j, k]
+                    newdata[5:] = edge
+                    img_loc[j, k] = newdata
+            data[i] = img_loc
+            # basename = os.path.basename(str(path))
+            # path_out = os.path.join(str(out_dir), str(basename))
+            # img_res.save(path_out)
 
         else:
             print("Weird extension: {}".format(path))
     data = data.reshape(count*(SIZE**2), CHANNELS)
-    print(data.shape)
+    # kmean = KMeans().fit_predict(data)
+    # ndata = np.ndarray((count*SIZE**2, CHANNELS+1))
+    # ndata[:,0:4] = data[:,0:4]
+    # ndata[:,5] = kmean
+    # data = data
+    # print(data.shape)
     return data
 
 
@@ -174,7 +197,7 @@ def main():
     # print(type(tri_img[0]))
     # train_img = [x for x in IMG_DIR.iterdir() if IMG_DIR.is_dir()]
     # test_img = [x for x in tri_img if '._' not in str(x)]
-
+    print("Image Size:", SIZE)
     pathToList = Path('../CatDogDataSet/annotations/list.txt')
     f = open(str(pathToList), 'r')
     fList = f.readlines()
@@ -191,8 +214,9 @@ def main():
             else:
                 catList.append(iList)
 
-    randIndexes = np.random.choice(len(pictureList), len(pictureList) // 10)
-    pictureList = [pictureList[i] for i in randIndexes]
+    # randIndexes = np.random.choice(len(pictureList), len(pictureList))
+    # randIndexes = range(200)
+    # pictureList = [pictureList[i] for i in randIndexes]
     train_img = [Path(IMG_DIR, "{}.jpg".format(x)) for x in pictureList]
     label_img = [Path(TRI_DIR, "{}.png".format(x)) for x in pictureList]
 

@@ -1,10 +1,12 @@
 from pathlib import Path
 import numpy as np
 import os
+import PIL
 from PIL import Image
+from FlatPreProcessing import SIZE
 
-SIZE = 32
-CHANNELS = 3
+
+CHANNELS = 30
 TRI_DIR = Path('../CatDogDataSet/test_images')
 
 
@@ -48,12 +50,13 @@ def resize_image(img, size):
     Resizes the image to be square with sidelength size. Pads with black.
     """
     img_res = img.resize((size, size), resample=Image.ANTIALIAS)
-    return img_res
+    img_pad = img.resize((size + 4, size + 4), resample=PIL.Image.ANTIALIAS)
+    img_pad.paste(img_res, (2, 2))
+    return img_pad
 
 
 def prep_train_images(paths):
     """
-    :rtype: object
     :param paths: paths to images
     :param out_dir: directory to write outputs to
     :return: nothing
@@ -61,20 +64,31 @@ def prep_train_images(paths):
     count = len(paths)
     data = np.ndarray((count, SIZE, SIZE, CHANNELS), dtype=np.uint8)
     for i, path in enumerate(paths):
+        # print("Train:", i)
         if i % 100 == 0:
             print("Processed: {} of {}".format(i, count))
         ext = os.path.splitext(str(path))[-1].lower()
-        if ext == ".jpg":
+        if ext == ".jpg" or ext == ".png":
             img = Image.open(path)
             img_nrm = norm_image(img)
             img_res = resize_image(img_nrm, SIZE)
-            img_mat = np.asarray(img_res, dtype=np.uint8)
-            data[i] = img_mat
+            im = img_res.load()
+            img_y, img_b, img_r = img_res.convert('YCbCr').split()
+            img_y_np = np.asarray(img_y).astype(float)
+            img_loc = np.ndarray((SIZE, SIZE, CHANNELS))
+            for j in range(2, SIZE-2):
+                for k in range(2, SIZE-2):
+                    edge = np.asarray([img_y_np[j-2:j+3, k-2:k+3]]).ravel()
+                    currdata = im[j, k]
+                    newdata = np.ndarray(CHANNELS)
+                    newdata[0:5] = [currdata[0], currdata[1], currdata[2], j, k]
+                    newdata[5:] = edge
+                    img_loc[j, k] = newdata
+            data[i] = img_loc
 
         else:
             print("Weird extension: {}".format(path))
     data = data.reshape(count*(SIZE**2), CHANNELS)
-    print(data.shape)
     return data
 
 def main():
