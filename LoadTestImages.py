@@ -3,10 +3,9 @@ import numpy as np
 import os
 import PIL
 from PIL import Image
-from FlatPreProcessing import SIZE
+from FlatPreProcessing import SIZE, CHANNELS
 
 
-CHANNELS = 30
 TRI_DIR = Path('../CatDogDataSet/test_images')
 
 
@@ -50,8 +49,8 @@ def resize_image(img, size):
     Resizes the image to be square with sidelength size. Pads with black.
     """
     img_res = img.resize((size, size), resample=Image.ANTIALIAS)
-    img_pad = img.resize((size + 4, size + 4), resample=PIL.Image.ANTIALIAS)
-    img_pad.paste(img_res, (2, 2))
+    img_pad = img.resize((size + 6, size + 6), resample=PIL.Image.ANTIALIAS)
+    img_pad.paste(img_res, (3, 3))
     return img_pad
 
 
@@ -76,13 +75,13 @@ def prep_train_images(paths):
             img_y, img_b, img_r = img_res.convert('YCbCr').split()
             img_y_np = np.asarray(img_y).astype(float)
             img_loc = np.ndarray((SIZE, SIZE, CHANNELS))
-            for j in range(2, SIZE-2):
-                for k in range(2, SIZE-2):
-                    edge = np.asarray([img_y_np[j-2:j+3, k-2:k+3]]).ravel()
+            for j in range(3, SIZE-3):
+                for k in range(3, SIZE-3):
+                    edge = np.asarray([img_y_np[j-3:j+4, k-3:k+4]]).ravel()
                     currdata = im[j, k]
                     newdata = np.ndarray(CHANNELS)
-                    newdata[0:5] = [currdata[0], currdata[1], currdata[2], j, k]
-                    newdata[5:] = edge
+                    newdata[0:3] = [currdata[0], currdata[1], currdata[2]]
+                    newdata[3:] = edge
                     img_loc[j, k] = newdata
             data[i] = img_loc
 

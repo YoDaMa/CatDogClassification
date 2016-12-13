@@ -17,7 +17,7 @@ from skimage.feature import local_binary_pattern
 
 
 SIZE = 40
-CHANNELS = 30
+CHANNELS = 3+49
 TRI_DIR = Path('../CatDogDataSet/annotations/trimaps')
 IMG_DIR = Path('../CatDogDataSet/images')
 BASE_DIR = Path('.')
@@ -94,8 +94,8 @@ def resize_image(img, size, imtype='RGB'):
         img_pad = Image.fromarray(img_np).convert('L')
 
     else:
-        img_pad = img.resize((size+4, size+4), resample=PIL.Image.ANTIALIAS)
-        img_pad.paste(img_res, (2,2))
+        img_pad = img.resize((size+6, size+6), resample=PIL.Image.ANTIALIAS)
+        img_pad.paste(img_res, (3,3))
     return img_pad
 
 
@@ -120,14 +120,14 @@ def prep_train_images(paths, out_dir):
             img_y, img_b, img_r = img_res.convert('YCbCr').split()
             img_y_np = np.asarray(img_y).astype(float)
             img_loc = np.ndarray((SIZE, SIZE, CHANNELS))
-            for j in range(2, SIZE-2):
-                for k in range(2, SIZE-2):
-                    edge = np.asarray([img_y_np[j-2:j+3, k-2:k+3]]).ravel()
+            for j in range(3, SIZE-3):
+                for k in range(3, SIZE-3):
+                    edge = np.asarray([img_y_np[j-3:j+4, k-3:k+4]]).ravel()
                     # print(edge)
                     currdata = im[j, k]
                     newdata = np.ndarray(CHANNELS)
-                    newdata[0:5] = [currdata[0], currdata[1], currdata[2], j, k]
-                    newdata[5:] = edge
+                    newdata[0:3] = [currdata[0], currdata[1], currdata[2]]
+                    newdata[3:] = edge
                     img_loc[j, k] = newdata
             data[i] = img_loc
             # basename = os.path.basename(str(path))
@@ -214,9 +214,9 @@ def main():
             else:
                 catList.append(iList)
 
-    # randIndexes = np.random.choice(len(pictureList), len(pictureList))
+    randIndexes = np.random.choice(len(pictureList), len(pictureList) // 10)
     # randIndexes = range(200)
-    # pictureList = [pictureList[i] for i in randIndexes]
+    pictureList = [pictureList[i] for i in randIndexes]
     train_img = [Path(IMG_DIR, "{}.jpg".format(x)) for x in pictureList]
     label_img = [Path(TRI_DIR, "{}.png".format(x)) for x in pictureList]
 
